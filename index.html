@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARLA Finance • Interactive 3D Treasury</title>
+  <meta name="description" content="Experience the interactive 3D ARLA Finance vault. Rotate the euro stack, withdraw authentic ARLA notes, and enjoy curated financial wit." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Ambient background glow layers -->
+  <div class="ambient-glow glow-emerald"></div>
+  <div class="ambient-glow glow-gold"></div>
+
+  <!-- Header: ARLA logo at top center, bigger, with ARLA FINANCE underneath -->
+  <header class="navbar-center">
+    <div class="top-center-brand">
+      <img src="/arla_logo.png" alt="ARLA Logo" class="brand-logo-large" />
+      <h1 class="brand-title">ARLA FINANCE</h1>
+    </div>
+    
+    <div class="nav-controls-pinned">
+      <button id="btn-sound" class="icon-btn" title="Toggle Sound" aria-label="Toggle Sound">
+        <svg id="icon-sound-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <svg id="icon-sound-off" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+      </button>
+      <button id="btn-reset-view" class="icon-btn" title="Reset Camera View" aria-label="Reset Camera View">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+          <path d="M3 3v5h5"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3D Canvas Stage -->
+  <main class="stage-container">
+    <!-- Centered luminous glow aura directly behind the 3D money model -->
+    <div class="model-center-glow"></div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Loading Screen -->
+    <div id="loader" class="loader-overlay">
+      <div class="loader-card">
+        <img src="/arla_logo.png" alt="ARLA" class="loader-logo" />
+        <div class="loader-bar-container">
+          <div id="loader-bar" class="loader-bar"></div>
+        </div>
+        <p id="loader-text" class="loader-text">Loading 3D Euro Model...</p>
+      </div>
+    </div>
+
+    <!-- Underneath Controls Dock: Only "Click here for free money" button -->
+    <section class="bottom-dock">
+      <button id="btn-click-money" class="btn-money" aria-label="Click here for free money">
+        <span class="btn-glow"></span>
+        <span class="btn-shimmer"></span>
+        <img src="/moneybag.png" alt="Money Bag" class="btn-moneybag-icon" />
+        <span class="btn-text">Click here for free money</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </section>
+  </main>
+
+  <!-- Card Emergence Stage / Modal -->
+  <div id="card-modal" class="card-modal hidden">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    
+    <div class="card-presentation-wrapper" id="card-presentation">
+      
+      <!-- ARLA logo in the middle above the card -->
+      <div class="card-header-logo-area">
+        <img src="/arla_logo.png" alt="ARLA Finance Logo" class="card-top-arla-logo" />
+      </div>
+
+      <!-- Glowing aura positioned directly behind the banknote card -->
+      <div class="card-glow-wrapper">
+        <div class="card-glow-aura"></div>
+
+        <!-- Interactive 3D flip card container -->
+        <div class="banknote-card-container" id="banknote-card">
+          <div class="banknote-flipper" id="banknote-flipper">
+            
+            <!-- FRONT: Initially just the note appears with portrait -->
+            <div class="banknote-face banknote-front">
+              <img src="/arla_100_note.png" alt="ARLA 100 Euro Note" class="banknote-bg-image" />
+              <div class="hologram-shimmer"></div>
+            </div>
+
+            <!-- BACK: After 1-2s note automatically flips, revealing blank.png with joke text printed over it -->
+            <div class="banknote-face banknote-back">
+              <img src="/blank.png" alt="ARLA 100 Euro Blank Note" class="banknote-bg-image" />
+              <div class="hologram-shimmer"></div>
+              
+              <!-- Joke text placed cleanly in the open blank center area of blank.png -->
+              <div class="blank-note-joke-content">
+                <span class="joke-category-tag" id="joke-category">FINANCE WIT</span>
+                <p class="blank-joke-setup" id="joke-setup">Loading financial humor...</p>
+                <p class="blank-joke-punchline" id="joke-punchline">...</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 3D Glare effect -->
+          <div class="card-glare" id="card-glare"></div>
+        </div>
+      </div>
+
+      <!-- Action buttons below the card -->
+      <div class="card-actions">
+        <button id="btn-another-joke" class="action-btn btn-secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Draw Another Note
+        </button>
+        <button id="btn-close-card" class="action-btn btn-close" aria-label="Return to stack">
+          Return to Stack
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

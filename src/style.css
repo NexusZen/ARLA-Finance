@@ -1,0 +1,717 @@
+/* ==========================================================================
+   ARLA Finance - Premium 3D Interactive Design System
+   ========================================================================== */
+
+:root {
+  --bg-primary: #080a0f;
+  --bg-secondary: #0f141c;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  
+  --color-emerald: #10b981;
+  --color-emerald-glow: rgba(16, 185, 129, 0.45);
+  --color-gold: #f59e0b;
+  --color-gold-glow: rgba(245, 158, 11, 0.35);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Ambient Background Lights */
+.ambient-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(140px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+}
+
+.glow-emerald {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+  top: -150px;
+  left: 25%;
+}
+
+.glow-gold {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, transparent 70%);
+  bottom: -100px;
+  right: 20%;
+}
+
+/* Radiant glow aura directly centered behind the 3D Money Model */
+.model-center-glow {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(16, 185, 129, 0.6) 0%,
+    rgba(52, 211, 153, 0.35) 30%,
+    rgba(245, 158, 11, 0.22) 55%,
+    rgba(16, 185, 129, 0.06) 72%,
+    transparent 80%
+  );
+  filter: blur(75px);
+  pointer-events: none;
+  z-index: 0;
+  animation: moneyGlowPulse 4s infinite ease-in-out;
+}
+
+/* Top Center Header Bar */
+.navbar-center {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 1.25rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  background: linear-gradient(180deg, rgba(8, 10, 15, 0.85) 0%, rgba(8, 10, 15, 0) 100%);
+  backdrop-filter: blur(8px);
+}
+
+.top-center-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.brand-logo-large {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(16, 185, 129, 0.35));
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.top-center-brand:hover .brand-logo-large {
+  transform: scale(1.06);
+}
+
+.brand-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  background: linear-gradient(135deg, #ffffff 40%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.nav-controls-pinned {
+  position: absolute;
+  right: 2rem;
+  top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Stage & 3D Canvas */
+.stage-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: grab;
+}
+
+#canvas-container:active {
+  cursor: grabbing;
+}
+
+/* Loader */
+.loader-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.loader-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.loader-logo {
+  height: 56px;
+  animation: float 2.5s infinite ease-in-out;
+}
+
+.loader-bar-container {
+  width: 220px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.loader-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-emerald), var(--color-gold));
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.loader-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Bottom Controls Dock - ONLY the "Click here for free money" Button */
+.bottom-dock {
+  position: relative;
+  z-index: 10;
+  padding-bottom: 2.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeInUp 0.8s ease forwards;
+}
+
+/* The Primary "Click here for free money" Button */
+.btn-money {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 1.05rem 2.6rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 60%, #34d399 100%);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 12px 30px -5px rgba(16, 185, 129, 0.55), 0 0 30px rgba(16, 185, 129, 0.35);
+  transition: all 0.3s var(--ease-spring);
+}
+
+.btn-money:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 18px 40px -5px rgba(16, 185, 129, 0.7), 0 0 40px rgba(52, 211, 153, 0.5);
+}
+
+.btn-money:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-moneybag-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  animation: pulseRotate 4s infinite ease-in-out;
+}
+
+.btn-text {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.btn-arrow {
+  font-size: 1.25rem;
+  font-weight: 600;
+  transition: transform 0.25s ease;
+}
+
+.btn-money:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+.btn-shimmer {
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 3.5s infinite;
+}
+
+/* ==========================================================================
+   Card Emergence Presentation & 3D Flip Modal
+   ========================================================================== */
+
+.card-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1400px;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.card-modal.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 10, 0.84);
+  backdrop-filter: blur(16px);
+}
+
+.card-presentation-wrapper {
+  position: relative;
+  z-index: 102;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: 92vw;
+  transform-style: preserve-3d;
+}
+
+/* ARLA logo in the middle above the card */
+.card-header-logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: dropIn 0.6s var(--ease-spring) forwards;
+}
+
+.card-top-arla-logo {
+  height: 56px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 18px rgba(16, 185, 129, 0.45));
+}
+
+/* Glow aura positioned directly behind the banknote card */
+.card-glow-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card-glow-aura {
+  position: absolute;
+  inset: -35px;
+  border-radius: 40px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(16, 185, 129, 0.7) 0%,
+    rgba(52, 211, 153, 0.45) 35%,
+    rgba(245, 158, 11, 0.3) 60%,
+    transparent 75%
+  );
+  filter: blur(45px);
+  z-index: 0;
+  pointer-events: none;
+  animation: cardGlowBreathe 3.5s infinite ease-in-out;
+}
+
+/* Interactive 3D Card Container */
+.banknote-card-container {
+  position: relative;
+  z-index: 1;
+  width: 700px;
+  max-width: 92vw;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  perspective: 1400px;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
+
+/* Banknote emergence animation */
+.card-emerging {
+  animation: emergeFromStack 0.85s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
+}
+
+/* 3D Flipper that flips after 1-2 seconds */
+.banknote-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.85s cubic-bezier(0.4, 0.0, 0.2, 1);
+  border-radius: 18px;
+  box-shadow: 
+    0 30px 70px -15px rgba(0, 0, 0, 0.9),
+    0 0 50px rgba(16, 185, 129, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.banknote-flipper.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.banknote-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* FRONT: Initial Note with Portrait */
+.banknote-front {
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+/* BACK: Blank Note with Text on top */
+.banknote-back {
+  transform: rotateY(180deg);
+  z-index: 1;
+}
+
+.banknote-bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hologram-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 25%,
+    rgba(16, 185, 129, 0.15) 50%,
+    rgba(245, 158, 11, 0.15) 75%,
+    transparent 100%
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Joke text styled seamlessly in the blank center area of blank.png */
+.blank-note-joke-content {
+  position: absolute;
+  top: 12%;
+  left: 24%;
+  width: 44%;
+  height: 76%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0.5rem 0.75rem;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.joke-category-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #065f46;
+  background: rgba(16, 185, 129, 0.22);
+  border: 1px solid rgba(6, 95, 70, 0.4);
+  padding: 0.2rem 0.65rem;
+  border-radius: 4px;
+  margin-bottom: 0.65rem;
+}
+
+.blank-joke-setup {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #064e3b;
+  line-height: 1.4;
+  margin-bottom: 0.55rem;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+}
+
+.blank-joke-punchline {
+  font-size: 1.16rem;
+  font-weight: 800;
+  color: #047857;
+  line-height: 1.35;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* Card Glare effect */
+.card-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+/* Card Actions */
+.card-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-spring);
+}
+
+.btn-secondary {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.btn-secondary:hover {
+  background: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+.btn-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Keyframes Animations
+   ========================================================================== */
+
+@keyframes moneyGlowPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 1;
+  }
+}
+
+@keyframes cardGlowBreathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes emergeFromStack {
+  0% {
+    opacity: 0;
+    transform: translateY(220px) scale(0.35) rotateX(45deg) rotateZ(-12deg);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-15px) scale(1.03) rotateX(-5deg) rotateZ(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg) rotateZ(0deg);
+  }
+}
+
+@keyframes dropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { left: -150%; }
+  35% { left: 150%; }
+  100% { left: 150%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulseRotate {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(6deg); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Media Queries & Responsiveness
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .brand-logo-large {
+    height: 48px;
+  }
+
+  .brand-title {
+    font-size: 1rem;
+  }
+
+  .nav-controls-pinned {
+    right: 1rem;
+    top: 1rem;
+  }
+
+  .btn-money {
+    padding: 0.95rem 2rem;
+    font-size: 1rem;
+  }
+
+  .banknote-card-container {
+    width: 94vw;
+  }
+
+  .blank-note-joke-content {
+    top: 10%;
+    left: 22%;
+    width: 48%;
+    height: 80%;
+  }
+
+  .blank-joke-setup {
+    font-size: 0.9rem;
+  }
+
+  .blank-joke-punchline {
+    font-size: 0.95rem;
+  }
+
+  .card-top-arla-logo {
+    height: 44px;
+  }
+
+  .card-actions {
+    flex-direction: column;
+    width: 90%;
+  }
+
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
