@@ -53,9 +53,12 @@
     <!-- Loading Screen -->
     <div id="loader" class="loader-overlay">
       <div class="loader-card">
-        <img src="/arla_logo.png" alt="ARLA" class="loader-logo" />
-        <div class="loader-bar-container">
-          <div id="loader-bar" class="loader-bar"></div>
+        <!-- Stacked logo fill: grey base + colored overlay clipped by progress -->
+        <div class="loader-logo-stack">
+          <img src="/arla_logo_GREY.png" alt="ARLA Loading" class="loader-logo-grey" />
+          <div class="loader-logo-color-mask" id="loader-color-mask">
+            <img src="/arla_logo.png" alt="ARLA" class="loader-logo-color" />
+          </div>
         </div>
         <p id="loader-text" class="loader-text">Loading 3D Euro Model...</p>
       </div>

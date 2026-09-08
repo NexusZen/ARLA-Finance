@@ -8,7 +8,7 @@ import { sound } from './audio.js';
 // DOM Elements
 const canvasContainer = document.getElementById('canvas-container');
 const loaderElement = document.getElementById('loader');
-const loaderBar = document.getElementById('loader-bar');
+const loaderColorMask = document.getElementById('loader-color-mask');
 const loaderText = document.getElementById('loader-text');
 
 const btnClickMoney = document.getElementById('btn-click-money');
@@ -179,22 +179,29 @@ loader.load(
 
     scene.add(euroModel);
 
+    // Fill logo to 100% before fading out
+    loaderColorMask.style.clipPath = 'inset(0% 0 0 0)';
+    loaderText.textContent = 'Ready';
+
     setTimeout(() => {
       loaderElement.style.opacity = '0';
       setTimeout(() => {
         loaderElement.style.display = 'none';
       }, 600);
-    }, 400);
+    }, 600);
   },
   (xhr) => {
     if (xhr.lengthComputable) {
       const percent = Math.round((xhr.loaded / xhr.total) * 100);
-      loaderBar.style.width = `${percent}%`;
+      // Reveal colored logo from bottom-to-top: inset(top% 0 0 0)
+      const topInset = 100 - percent;
+      loaderColorMask.style.clipPath = `inset(${topInset}% 0 0 0)`;
       loaderText.textContent = `Loading 3D Euro Model: ${percent}%`;
     }
   },
   (error) => {
     console.error('Error loading 3D model:', error);
+    loaderColorMask.style.clipPath = 'inset(0% 0 0 0)';
     loaderText.textContent = 'Ready';
     setTimeout(() => {
       loaderElement.style.opacity = '0';

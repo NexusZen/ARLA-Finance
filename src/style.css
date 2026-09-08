@@ -209,29 +209,54 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
-.loader-logo {
-  height: 56px;
-  animation: float 2.5s infinite ease-in-out;
-}
-
-.loader-bar-container {
-  width: 220px;
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+/* Stacked logo fill animation container */
+.loader-logo-stack {
   position: relative;
+  width: 160px;
+  height: auto;
+  aspect-ratio: auto;
 }
 
-.loader-bar {
-  width: 0%;
+/* Grey base logo (always fully visible) */
+.loader-logo-grey {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 20px rgba(100, 116, 139, 0.15));
+  animation: loaderPulseGlow 2.5s infinite ease-in-out;
+}
+
+/* Colored logo overlay — clipped from bottom to top by JS */
+.loader-logo-color-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, var(--color-emerald), var(--color-gold));
-  transition: width 0.3s ease;
-  border-radius: 4px;
+  /* Start fully hidden (bottom edge) — JS updates inset top % */
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 0.35s ease-out;
+}
+
+.loader-logo-color {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 24px rgba(16, 185, 129, 0.5));
+}
+
+@keyframes loaderPulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 4px 20px rgba(100, 116, 139, 0.15));
+    opacity: 0.75;
+  }
+  50% {
+    filter: drop-shadow(0 4px 30px rgba(100, 116, 139, 0.3));
+    opacity: 1;
+  }
 }
 
 .loader-text {
