@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARLA Finance • Interactive 3D Treasury</title>
-  <meta name="description" content="Experience the interactive 3D ARLA Finance vault. Rotate the euro stack, withdraw authentic ARLA notes, and enjoy curated financial wit." />
+  <title>Arla BD FLIT • Interactive 3D Treasury</title>
+  <meta name="description" content="Experience the interactive 3D Arla BD FLIT vault. Rotate the euro stack, withdraw authentic ARLA notes, and enjoy curated financial wit." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -19,7 +19,7 @@
   <header class="navbar-center">
     <div class="top-center-brand">
       <img src="/arla_logo.png" alt="ARLA Logo" class="brand-logo-large" />
-      <h1 class="brand-title">ARLA FINANCE</h1>
+      <h1 class="brand-title">Arla BD FLIT</h1>
     </div>
     
     <div class="nav-controls-pinned">
@@ -97,13 +97,13 @@
             
             <!-- FRONT: Initially just the note appears with portrait -->
             <div class="banknote-face banknote-front">
-              <img src="/arla_100_note.png" alt="ARLA 100 Euro Note" class="banknote-bg-image" />
+              <img id="note-front-img" src="/arla_100_note.png" alt="ARLA 100 Euro Note" class="banknote-bg-image" />
               <div class="hologram-shimmer"></div>
             </div>
 
             <!-- BACK: After 1-2s note automatically flips, revealing blank.png with joke text printed over it -->
             <div class="banknote-face banknote-back">
-              <img src="/blank.png" alt="ARLA 100 Euro Blank Note" class="banknote-bg-image" />
+              <img id="note-back-img" src="/blank.png" alt="ARLA 100 Euro Blank Note" class="banknote-bg-image" />
               <div class="hologram-shimmer"></div>
               
               <!-- Joke text placed cleanly in the open blank center area of blank.png -->

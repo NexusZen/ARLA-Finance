@@ -29,6 +29,31 @@ const jokeCategory = document.getElementById('joke-category');
 const jokeSetup = document.getElementById('joke-setup');
 const jokePunchline = document.getElementById('joke-punchline');
 
+const noteFrontImg = document.getElementById('note-front-img');
+const noteBackImg = document.getElementById('note-back-img');
+const banknoteBack = document.querySelector('.banknote-back');
+const banknoteFront = document.querySelector('.banknote-front');
+
+// Note variant sets: [frontImage, backImage, isDollar]
+const noteVariants = [
+  { front: '/arla_100_note.png', back: '/blank.png', isDollar: false },
+  { front: '/arla_100_note_dollar.png', back: '/blank_alt.png', isDollar: true },
+];
+
+function randomizeNoteVariant() {
+  const variant = noteVariants[Math.floor(Math.random() * noteVariants.length)];
+  noteFrontImg.src = variant.front;
+  noteBackImg.src = variant.back;
+  const targets = [banknoteCard, banknoteBack, banknoteFront];
+  targets.forEach(el => {
+    if (variant.isDollar) {
+      el.classList.add('dollar-variant');
+    } else {
+      el.classList.remove('dollar-variant');
+    }
+  });
+}
+
 // State
 let currentJokeIndex = -1;
 let euroModel = null;
@@ -299,6 +324,7 @@ function triggerAutomaticFlip() {
 
 function openCardModal() {
   sound.playBanknoteSlide();
+  randomizeNoteVariant();
   displayNewJoke();
 
   // Reset to front face initially
@@ -368,7 +394,8 @@ btnAnotherJoke.addEventListener('click', () => {
   // Reset to front face
   banknoteFlipper.classList.remove('is-flipped');
 
-  // Load new joke
+  // Randomize note variant and load new joke
+  randomizeNoteVariant();
   displayNewJoke();
 
   confetti({

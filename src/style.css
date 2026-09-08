@@ -556,6 +556,29 @@ html, body {
   overflow-wrap: break-word;
 }
 
+/* Dollar variant: wider card to fit the dollar bill aspect ratio without cropping */
+.banknote-card-container.dollar-variant {
+  width: 820px;
+  aspect-ratio: 2 / 1;
+}
+
+.banknote-back.dollar-variant .blank-note-joke-content {
+  left: 30%;
+  width: 45%;
+  align-items: center;
+  text-align: center;
+}
+
+.banknote-back.dollar-variant .joke-category-tag {
+  text-align: center;
+}
+
+.banknote-back.dollar-variant .blank-joke-setup,
+.banknote-back.dollar-variant .blank-joke-punchline {
+  text-align: center;
+  width: 100%;
+}
+
 /* Card Glare effect */
 .card-glare {
   position: absolute;
@@ -717,6 +740,16 @@ html, body {
 
   .banknote-card-container {
     width: 94vw;
+  }
+
+  .banknote-card-container.dollar-variant {
+    width: 96vw;
+    aspect-ratio: 2 / 1;
+  }
+
+  .banknote-back.dollar-variant .blank-note-joke-content {
+    left: 28%;
+    width: 48%;
   }
 
   .blank-note-joke-content {
