@@ -574,36 +574,48 @@
       }, 1000);
     });
 
-    // Connect to real-time Server-Sent Events (SSE)
+    // Real-time synchronization
     function connectSSE() {
-      const evtSource = new EventSource('/api/quiz/stream');
-      evtSource.onmessage = (event) => {
-        try {
-          const state = JSON.parse(event.data);
-          updateUI(state);
-        } catch (err) {
-          console.error('Failed to parse SSE event:', err);
-        }
-      };
-      evtSource.onerror = () => {
-        // Fallback polling if SSE disconnects
-        setTimeout(fetchState, 1000);
-      };
+      try {
+        const evtSource = new EventSource('/api/quiz/stream');
+        evtSource.onmessage = (event) => {
+          try {
+            const state = JSON.parse(event.data);
+            updateUI(state);
+          } catch (err) {
+            console.error('Failed to parse SSE event:', err);
+          }
+        };
+        evtSource.onerror = () => {
+          evtSource.close();
+        };
+      } catch (e) {}
     }
 
+    let isPolling = false;
     async function fetchState() {
+      if (isPolling) return;
+      isPolling = true;
       try {
-        const res = await fetch('/api/quiz');
-        const state = await res.json();
-        updateUI(state);
+        const res = await fetch('/api/quiz', { cache: 'no-store' });
+        if (res.ok) {
+          const state = await res.json();
+          updateUI(state);
+        }
       } catch (err) {
         console.error('Poll failed:', err);
+      } finally {
+        isPolling = false;
       }
     }
 
     // Initialize
     fetchState();
     connectSSE();
+    setInterval(fetchState, 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) fetchState();
+    });
   </script>
 </body>
 </html>

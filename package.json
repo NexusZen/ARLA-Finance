@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.4",
     "canvas-confetti": "^1.9.4",
     "jspdf": "^4.2.1",
     "three": "^0.170.0"

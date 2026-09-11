@@ -3,35 +3,25 @@ import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { quizQuestions } from './src/quiz.js';
 
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import { getQuizState, executeQuizAction } from './api/_state.js';
 
-// In-Memory Global Quiz State
-const quizState = {
-  status: 'waiting', // 'waiting' | 'active' | 'ended'
-  currentIndex: 0,
-  totalQuestions: quizQuestions.length
-};
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 const sseClients = new Set();
 
-function getPublicState() {
-  return {
-    status: quizState.status,
-    currentIndex: quizState.currentIndex,
-    totalQuestions: quizState.totalQuestions,
-    currentQuestion: quizState.status === 'active' ? quizQuestions[quizState.currentIndex] : null,
-    allQuestions: quizQuestions
-  };
-}
-
-function broadcastState() {
-  const payload = JSON.stringify(getPublicState());
-  for (const client of sseClients) {
-    try {
-      client.write(`data: ${payload}\n\n`);
-    } catch {
-      sseClients.delete(client);
+async function broadcastState() {
+  try {
+    const state = await getQuizState();
+    const payload = JSON.stringify(state);
+    for (const client of sseClients) {
+      try {
+        client.write(`data: ${payload}\n\n`);
+      } catch {
+        sseClients.delete(client);
+      }
     }
+  } catch (err) {
+    console.error('Error broadcasting state:', err);
   }
 }
 
@@ -39,7 +29,7 @@ function quizServerPlugin() {
   return {
     name: 'quiz-server-plugin',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+      server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
         const pathname = url.pathname;
 
@@ -56,29 +46,32 @@ function quizServerPlugin() {
             req.url = '/quiz.html';
             return next();
           }
+          const state = await getQuizState();
           res.setHeader('Content-Type', 'application/json');
           res.setHeader('Access-Control-Allow-Origin', '*');
-          res.end(JSON.stringify(getPublicState()));
+          res.end(JSON.stringify(state));
           return;
         }
 
         // GET /api/quiz or GET /api/controller
         if (req.method === 'GET' && (pathname === '/api/quiz' || pathname === '/api/controller')) {
+          const state = await getQuizState();
           res.setHeader('Content-Type', 'application/json');
           res.setHeader('Access-Control-Allow-Origin', '*');
-          res.end(JSON.stringify(getPublicState()));
+          res.end(JSON.stringify(state));
           return;
         }
 
         // GET /api/quiz/stream (Server-Sent Events)
         if (req.method === 'GET' && pathname === '/api/quiz/stream') {
+          const state = await getQuizState();
           res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
             'Access-Control-Allow-Origin': '*'
           });
-          res.write(`data: ${JSON.stringify(getPublicState())}\n\n`);
+          res.write(`data: ${JSON.stringify(state)}\n\n`);
           sseClients.add(res);
           req.on('close', () => {
             sseClients.delete(res);
@@ -90,58 +83,36 @@ function quizServerPlugin() {
         if (req.method === 'POST' && (pathname === '/controller' || pathname === '/api/controller')) {
           let body = '';
           req.on('data', chunk => { body += chunk; });
-          req.on('end', () => {
+          req.on('end', async () => {
             try {
               let data = {};
               if (body) {
                 try {
                   data = JSON.parse(body);
                 } catch {
-                  // Fallback: handle unquoted keys or query-string style
-                  const actionMatch = body.match(/action["':=\s]+([a-zA-Z0-9_-]+)/);
-                  if (actionMatch) {
-                    data.action = actionMatch[1];
-                  }
-                  const indexMatch = body.match(/index["':=\s]+([0-9]+)/);
-                  if (indexMatch) {
-                    data.index = parseInt(indexMatch[1], 10);
+                  try {
+                    data = JSON.parse(body.replace(/\\"/g, '"'));
+                  } catch {
+                    const actionMatch = body.match(/action[\\"'`\s:=]+([a-zA-Z0-9_-]+)/i);
+                    if (actionMatch) {
+                      data.action = actionMatch[1];
+                    }
+                    const indexMatch = body.match(/index[\\"'`\s:=]+([0-9]+)/i);
+                    if (indexMatch) {
+                      data.index = parseInt(indexMatch[1], 10);
+                    }
                   }
                 }
               }
-              const action = data.action;
-              console.log('[Controller API] Received action:', action, 'raw body:', body);
+              const action = data?.action;
+              const index = data?.index;
 
-              if (action === 'start') {
-                quizState.status = 'active';
-                quizState.currentIndex = 0;
-              } else if (action === 'next') {
-                if (quizState.status === 'active') {
-                  if (quizState.currentIndex < quizState.totalQuestions - 1) {
-                    quizState.currentIndex++;
-                  } else {
-                    quizState.status = 'ended';
-                  }
-                }
-              } else if (action === 'prev') {
-                if (quizState.status === 'active' && quizState.currentIndex > 0) {
-                  quizState.currentIndex--;
-                }
-              } else if (action === 'goto') {
-                const target = parseInt(data.index, 10);
-                if (!isNaN(target) && target >= 0 && target < quizState.totalQuestions) {
-                  quizState.status = 'active';
-                  quizState.currentIndex = target;
-                }
-              } else if (action === 'reset') {
-                quizState.status = 'waiting';
-                quizState.currentIndex = 0;
-              }
-
+              const updatedState = await executeQuizAction(action, index);
               broadcastState();
 
               res.setHeader('Content-Type', 'application/json');
               res.setHeader('Access-Control-Allow-Origin', '*');
-              res.end(JSON.stringify({ success: true, state: getPublicState() }));
+              res.end(JSON.stringify({ success: true, state: updatedState }));
             } catch (err) {
               res.statusCode = 400;
               res.end(JSON.stringify({ error: 'Failed to process request', details: String(err) }));

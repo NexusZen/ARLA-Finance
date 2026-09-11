@@ -561,45 +561,72 @@ if (btnSound) {
   });
 }
 
-// SSE Real-time Synchronization
+// Real-time Synchronization (Fast Polling + SSE Hybrid)
 function initSync() {
-  function connect() {
-    const evtSource = new EventSource('/api/quiz/stream');
-    evtSource.onopen = () => {
-      if (syncPill) syncPill.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-      if (syncText) syncText.textContent = 'LIVE SYNC';
-    };
-    evtSource.onmessage = (event) => {
-      try {
-        const state = JSON.parse(event.data);
+  let isPolling = false;
+  let sseSupported = true;
+
+  async function fetchState() {
+    if (isPolling) return;
+    isPolling = true;
+    try {
+      const res = await fetch('/api/quiz', { cache: 'no-store' });
+      if (res.ok) {
+        const state = await res.json();
         applyState(state);
-      } catch (err) {
-        console.error('SSE parse error:', err);
+        if (syncPill) syncPill.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        if (syncText) syncText.textContent = 'LIVE SYNC';
+      } else {
+        if (syncPill) syncPill.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        if (syncText) syncText.textContent = 'CONNECTING';
       }
-    };
-    evtSource.onerror = () => {
-      evtSource.close();
-      if (syncPill) syncPill.style.borderColor = 'rgba(245, 158, 11, 0.4)';
-      if (syncText) syncText.textContent = 'RECONNECTING';
-      setTimeout(connect, 1500);
-    };
+    } catch (err) {
+      if (syncPill) syncPill.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+      if (syncText) syncText.textContent = 'OFFLINE';
+    } finally {
+      isPolling = false;
+    }
   }
 
-  // Initial Fetch
-  fetch('/api/quiz')
-    .then(res => res.json())
-    .then(state => applyState(state))
-    .catch(err => console.error('Initial state fetch error:', err));
+  function trySSE() {
+    try {
+      const evtSource = new EventSource('/api/quiz/stream');
+      evtSource.onopen = () => {
+        if (syncPill) syncPill.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        if (syncText) syncText.textContent = 'LIVE SYNC';
+      };
+      evtSource.onmessage = (event) => {
+        try {
+          const state = JSON.parse(event.data);
+          applyState(state);
+        } catch (err) {
+          console.error('SSE parse error:', err);
+        }
+      };
+      evtSource.onerror = () => {
+        evtSource.close();
+        sseSupported = false;
+      };
+    } catch (e) {
+      sseSupported = false;
+    }
+  }
 
-  connect();
+  // Initial Fetch immediately
+  fetchState();
 
-  // Safety fallback polling
-  setInterval(() => {
-    fetch('/api/quiz')
-      .then(res => res.json())
-      .then(state => applyState(state))
-      .catch(() => {});
-  }, 2000);
+  // Try SSE for local dev
+  trySSE();
+
+  // Robust 1-second interval polling for Vercel and cross-device sync
+  setInterval(fetchState, 1000);
+
+  // Immediate sync when tab becomes active
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      fetchState();
+    }
+  });
 }
 
 // Start sync on page load
