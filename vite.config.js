@@ -1,5 +1,9 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { quizQuestions } from './src/quiz.js';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // In-Memory Global Quiz State
 const quizState = {
@@ -154,6 +158,15 @@ function quizServerPlugin() {
 
 export default defineConfig({
   plugins: [quizServerPlugin()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        quiz: resolve(__dirname, 'quiz.html'),
+        controller: resolve(__dirname, 'controller.html')
+      }
+    }
+  },
   server: {
     port: 5173,
     host: true
