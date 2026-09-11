@@ -19,7 +19,9 @@
   <div id="name-modal" class="name-modal-overlay">
     <div class="name-modal-card">
       <div class="name-modal-glow"></div>
-      <h2 class="name-modal-title">Welcome to ARLA FLIT</h2>
+      <div class="name-modal-badge">PARTICIPANT REGISTRATION</div>
+      <h2 class="name-modal-title">Enter your nickname</h2>
+      <p class="name-modal-subtitle">Please enter your nickname for the quiz and your honorary FLIT membership card.</p>
       
       <form id="form-name-entry" class="name-form" onsubmit="return false;">
         <div class="name-input-wrapper">
@@ -27,9 +29,10 @@
             type="text"
             id="input-user-name"
             class="name-input"
+            placeholder="Your nickname (e.g. Alex, Sam)..."
             maxlength="24"
             required
-            autocomplete="name"
+            autocomplete="off"
             autofocus
           />
         </div>
@@ -107,7 +110,7 @@
               <span class="pulse-dot"></span>
               <span class="pulse-dot"></span>
             </div>
-            <button id="btn-edit-name" class="btn-edit-name" type="button">✎ Change Name</button>
+            <button id="btn-edit-name" class="btn-edit-name" type="button">✎ Change Nickname</button>
           </div>
 
           <!-- Question area -->
