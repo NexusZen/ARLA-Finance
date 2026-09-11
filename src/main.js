@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import confetti from 'canvas-confetti';
-import { getRandomJoke } from './jokes.js';
+import { quizQuestions, congratsMessage } from './quiz.js';
 import { sound } from './audio.js';
 
 // DOM Elements
@@ -17,50 +17,29 @@ const iconSoundOn = document.getElementById('icon-sound-on');
 const iconSoundOff = document.getElementById('icon-sound-off');
 const btnResetView = document.getElementById('btn-reset-view');
 
-const cardModal = document.getElementById('card-modal');
+const quizModal = document.getElementById('quiz-modal');
 const modalBackdrop = document.getElementById('modal-backdrop');
-const banknoteCard = document.getElementById('banknote-card');
-const banknoteFlipper = document.getElementById('banknote-flipper');
-const cardGlare = document.getElementById('card-glare');
-const btnAnotherJoke = document.getElementById('btn-another-joke');
-const btnCloseCard = document.getElementById('btn-close-card');
 
-const jokeCategory = document.getElementById('joke-category');
-const jokeSetup = document.getElementById('joke-setup');
-const jokePunchline = document.getElementById('joke-punchline');
+const quizProgressBar = document.getElementById('quiz-progress-bar');
+const quizProgressLabel = document.getElementById('quiz-progress-label');
+const quizProgressWrapper = document.querySelector('.quiz-progress-bar-wrapper');
+const quizQuestionArea = document.getElementById('quiz-question-area');
+const quizQuestionNumber = document.getElementById('quiz-question-number');
+const quizQuestionText = document.getElementById('quiz-question-text');
+const quizOptions = document.getElementById('quiz-options');
+const quizCongratsArea = document.getElementById('quiz-congrats-area');
+const quizWaitingArea = document.getElementById('quiz-waiting-area');
+const btnCloseQuiz = document.getElementById('btn-close-quiz');
 
-const noteFrontImg = document.getElementById('note-front-img');
-const noteBackImg = document.getElementById('note-back-img');
-const banknoteBack = document.querySelector('.banknote-back');
-const banknoteFront = document.querySelector('.banknote-front');
-
-// Note variant sets: [frontImage, backImage, isDollar]
-const noteVariants = [
-  { front: '/arla_100_note.png', back: '/blank.png', isDollar: false },
-  { front: '/arla_100_note_dollar.png', back: '/blank_alt.png', isDollar: true },
-];
-
-function randomizeNoteVariant() {
-  const variant = noteVariants[Math.floor(Math.random() * noteVariants.length)];
-  noteFrontImg.src = variant.front;
-  noteBackImg.src = variant.back;
-  const targets = [banknoteCard, banknoteBack, banknoteFront];
-  targets.forEach(el => {
-    if (variant.isDollar) {
-      el.classList.add('dollar-variant');
-    } else {
-      el.classList.remove('dollar-variant');
-    }
-  });
-}
+const banknoteIntro = document.getElementById('banknote-intro');
+const quizCard = document.getElementById('quiz-card');
 
 // State
-let currentJokeIndex = -1;
+let currentQuestionIndex = 0;
 let euroModel = null;
 let defaultCameraPos = new THREE.Vector3(0, 1.5, 4.0);
 let targetCameraPos = defaultCameraPos.clone();
 let isResettingCamera = false;
-let flipTimeout = null;
 
 /* ==========================================================================
    Three.js Scene Setup
@@ -149,12 +128,27 @@ shadowPlane.position.y = -0.55;
 shadowPlane.receiveShadow = true;
 scene.add(shadowPlane);
 
-// Floor subtle glow disc
-const discGeo = new THREE.RingGeometry(0.01, 2.5, 64);
+// Floor subtle radial gradient glow disc (smooth fade, zero cutoff)
+function createFloorGlowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+  gradient.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+  gradient.addColorStop(0.3, 'rgba(16, 185, 129, 0.16)');
+  gradient.addColorStop(0.6, 'rgba(16, 185, 129, 0.05)');
+  gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(canvas);
+}
+
+const discGeo = new THREE.PlaneGeometry(7, 7);
 const discMat = new THREE.MeshBasicMaterial({
-  color: 0x10b981,
+  map: createFloorGlowTexture(),
   transparent: true,
-  opacity: 0.08,
+  depthWrite: false,
   side: THREE.DoubleSide
 });
 const disc = new THREE.Mesh(discGeo, discMat);
@@ -221,7 +215,7 @@ loader.load(
       // Reveal colored logo from bottom-to-top: inset(top% 0 0 0)
       const topInset = 100 - percent;
       loaderColorMask.style.clipPath = `inset(${topInset}% 0 0 0)`;
-      loaderText.textContent = `Loading 3D Euro Model: ${percent}%`;
+      loaderText.textContent = `Loading...`;
     }
   },
   (error) => {
@@ -301,113 +295,257 @@ if (window.innerWidth < 640) {
 }
 
 /* ==========================================================================
-   Interactive Joke & Banknote Card Modal with 3D Flip
+   Interactive Quiz Modal & Live Controller Sync
    ========================================================================== */
-function displayNewJoke() {
-  const { joke, index } = getRandomJoke(currentJokeIndex);
-  currentJokeIndex = index;
+const optionLetters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
 
-  jokeCategory.textContent = joke.category.toUpperCase();
-  jokeSetup.textContent = joke.setup;
-  jokePunchline.textContent = joke.punchline;
+// Server Synchronization State
+let serverQuizState = {
+  status: 'waiting',
+  currentIndex: 0,
+  totalQuestions: quizQuestions.length,
+  currentQuestion: null
+};
+
+let localStatus = 'waiting';
+let localIndex = -1;
+
+function updateProgressBar(index, total) {
+  const percent = ((index + 1) / total) * 100;
+  quizProgressBar.style.width = `${percent}%`;
+  quizProgressLabel.textContent = `Question ${index + 1} of ${total}`;
 }
 
-function triggerAutomaticFlip() {
-  if (flipTimeout) clearTimeout(flipTimeout);
+function renderQuestion(index) {
+  const q = quizQuestions[index] || serverQuizState.currentQuestion;
+  if (!q) return;
 
-  // Automatically flip after 1.5 seconds
-  flipTimeout = setTimeout(() => {
-    sound.playBanknoteSlide();
-    banknoteFlipper.classList.add('is-flipped');
-  }, 1500);
-}
+  quizQuestionNumber.textContent = String(index + 1).padStart(2, '0');
+  quizQuestionText.textContent = q.question;
 
-function openCardModal() {
-  sound.playBanknoteSlide();
-  randomizeNoteVariant();
-  displayNewJoke();
+  // Clear old options
+  quizOptions.innerHTML = '';
 
-  // Reset to front face initially
-  banknoteFlipper.classList.remove('is-flipped');
-
-  cardModal.classList.remove('hidden');
-  banknoteCard.classList.remove('card-emerging');
-
-  // Trigger reflow to restart emergence animation
-  void banknoteCard.offsetWidth;
-  banknoteCard.classList.add('card-emerging');
-
-  // Green & Gold celebratory confetti
-  confetti({
-    particleCount: 45,
-    spread: 70,
-    origin: { y: 0.65 },
-    colors: ['#10b981', '#34d399', '#f59e0b', '#fbbf24', '#ffffff']
+  q.options.forEach((optText, i) => {
+    const letter = optionLetters[i] || String.fromCharCode(97 + i);
+    const btn = document.createElement('button');
+    btn.className = 'quiz-option-btn';
+    btn.id = `quiz-option-${index}-${i}`;
+    btn.innerHTML = `
+      <span class="option-letter">${letter}.</span>
+      <span class="option-text">${optText}</span>
+    `;
+    btn.addEventListener('click', () => handleOptionClick(btn));
+    quizOptions.appendChild(btn);
   });
 
-  // Start the 1.5s automatic flip timer
-  triggerAutomaticFlip();
+  updateProgressBar(index, serverQuizState.totalQuestions || quizQuestions.length);
+
+  // Animate entrance
+  quizQuestionArea.classList.remove('quiz-slide-in');
+  void quizQuestionArea.offsetWidth; // trigger reflow
+  quizQuestionArea.classList.add('quiz-slide-in');
 }
 
-function closeCardModal() {
-  if (flipTimeout) clearTimeout(flipTimeout);
+function handleOptionClick(btn) {
   sound.playClick();
-  cardModal.classList.add('hidden');
-  banknoteFlipper.classList.remove('is-flipped');
+
+  // Visual feedback: highlight the clicked option
+  const allBtns = quizOptions.querySelectorAll('.quiz-option-btn');
+  allBtns.forEach(b => {
+    b.classList.remove('selected');
+  });
+  btn.classList.add('selected');
 }
 
-// 3D Parallax Tilt on Banknote Card
-banknoteCard.addEventListener('mousemove', (e) => {
-  const rect = banknoteCard.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+function showCongrats() {
+  sound.playBanknoteSlide();
 
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
+  // Update progress bar to 100%
+  quizProgressBar.style.width = '100%';
+  quizProgressLabel.textContent = 'Completed!';
 
-  const rotateX = ((y - centerY) / centerY) * -10;
-  const rotateY = ((x - centerX) / centerX) * 12;
+  // Hide question & waiting area, show congrats
+  quizWaitingArea.classList.add('hidden');
+  quizQuestionArea.classList.add('hidden');
+  quizCongratsArea.classList.remove('hidden');
 
-  banknoteCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+  // Big celebration confetti
+  confetti({
+    particleCount: 120,
+    spread: 100,
+    origin: { y: 0.55 },
+    colors: ['#10b981', '#34d399', '#f59e0b', '#fbbf24', '#ffffff', '#a78bfa']
+  });
 
-  if (cardGlare) {
-    cardGlare.style.opacity = '1';
-    cardGlare.style.background = `radial-gradient(circle at ${(x / rect.width) * 100}% ${(y / rect.height) * 100}%, rgba(255, 255, 255, 0.25) 0%, transparent 60%)`;
+  // Second wave
+  setTimeout(() => {
+    confetti({
+      particleCount: 80,
+      angle: 60,
+      spread: 60,
+      origin: { x: 0, y: 0.6 },
+      colors: ['#10b981', '#f59e0b', '#ffffff']
+    });
+    confetti({
+      particleCount: 80,
+      angle: 120,
+      spread: 60,
+      origin: { x: 1, y: 0.6 },
+      colors: ['#10b981', '#f59e0b', '#ffffff']
+    });
+  }, 400);
+}
+
+let introTimeout1 = null;
+let introTimeout2 = null;
+let introTimeout3 = null;
+
+function clearIntroTimeouts() {
+  if (introTimeout1) clearTimeout(introTimeout1);
+  if (introTimeout2) clearTimeout(introTimeout2);
+  if (introTimeout3) clearTimeout(introTimeout3);
+  introTimeout1 = null;
+  introTimeout2 = null;
+  introTimeout3 = null;
+}
+
+function openQuizModal() {
+  clearIntroTimeouts();
+  sound.playBanknoteSlide();
+
+  const isWaiting = serverQuizState.status === 'waiting';
+  const isEnded = serverQuizState.status === 'ended';
+
+  if (isWaiting) {
+    if (quizProgressWrapper) quizProgressWrapper.classList.add('hidden');
+    if (quizProgressLabel) quizProgressLabel.classList.add('hidden');
+    quizWaitingArea.classList.remove('hidden');
+    quizQuestionArea.classList.add('hidden');
+    quizCongratsArea.classList.add('hidden');
+  } else if (isEnded) {
+    if (quizProgressWrapper) quizProgressWrapper.classList.remove('hidden');
+    if (quizProgressLabel) {
+      quizProgressLabel.classList.remove('hidden');
+      quizProgressLabel.textContent = 'Completed!';
+    }
+    quizProgressBar.style.width = '100%';
+    quizWaitingArea.classList.add('hidden');
+    quizQuestionArea.classList.add('hidden');
+    quizCongratsArea.classList.remove('hidden');
+  } else {
+    // Active
+    if (quizProgressWrapper) quizProgressWrapper.classList.remove('hidden');
+    if (quizProgressLabel) quizProgressLabel.classList.remove('hidden');
+    quizWaitingArea.classList.add('hidden');
+    quizQuestionArea.classList.remove('hidden');
+    quizCongratsArea.classList.add('hidden');
+    renderQuestion(serverQuizState.currentIndex);
   }
-});
 
-banknoteCard.addEventListener('mouseleave', () => {
-  banknoteCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-  if (cardGlare) {
-    cardGlare.style.opacity = '0';
+  // Reset intro & quiz card state
+  banknoteIntro.classList.remove('banknote-emerge', 'banknote-exit', 'intro-hidden');
+  quizCard.classList.remove('quiz-card-enter');
+  quizCard.classList.add('quiz-card-hidden');
+
+  // Force reflow so emergence animation restarts cleanly
+  void banknoteIntro.offsetWidth;
+  banknoteIntro.classList.add('banknote-emerge');
+
+  // Show modal
+  quizModal.classList.remove('hidden');
+
+  // After banknote emerges and rests (800ms), smoothly 3D-flip into quiz card
+  introTimeout1 = setTimeout(() => {
+    sound.playBanknoteSlide();
+    banknoteIntro.classList.add('banknote-exit');
+
+    // Quiz card flips in as banknote rotates edge-on
+    introTimeout2 = setTimeout(() => {
+      quizCard.classList.remove('quiz-card-hidden');
+      quizCard.classList.add('quiz-card-enter');
+    }, 240);
+
+    // Hide intro from pointer events after flip completes
+    introTimeout3 = setTimeout(() => {
+      banknoteIntro.classList.add('intro-hidden');
+    }, 600);
+  }, 800);
+}
+
+function closeQuizModal() {
+  clearIntroTimeouts();
+  sound.playClick();
+  quizModal.classList.add('hidden');
+
+  // Reset intro state for next time
+  banknoteIntro.classList.remove('banknote-emerge', 'banknote-exit', 'intro-hidden');
+  quizCard.classList.remove('quiz-card-enter');
+  quizCard.classList.add('quiz-card-hidden');
+}
+
+// Apply updates received from /quiz or /api/quiz/stream
+function applyServerState(state) {
+  serverQuizState = state;
+  const { status, currentIndex } = state;
+
+  if (status === 'waiting') {
+    localStatus = 'waiting';
+    localIndex = -1;
+  } else if (status === 'active') {
+    localStatus = 'active';
+    localIndex = currentIndex;
+  } else if (status === 'ended') {
+    localStatus = 'ended';
   }
-});
+}
+
+// Connect to Server-Sent Events (SSE) stream for real-time live synchronization
+function initLiveSync() {
+  function connect() {
+    const evtSource = new EventSource('/api/quiz/stream');
+    evtSource.onmessage = (event) => {
+      try {
+        const state = JSON.parse(event.data);
+        applyServerState(state);
+      } catch (err) {
+        console.error('SSE parse error:', err);
+      }
+    };
+    evtSource.onerror = () => {
+      evtSource.close();
+      // Reconnect after 1.5s
+      setTimeout(connect, 1500);
+    };
+  }
+
+  // Initial fetch
+  fetch('/api/quiz')
+    .then(res => res.json())
+    .then(state => applyServerState(state))
+    .catch(err => console.error('Initial fetch failed:', err));
+
+  connect();
+
+  // Backup short poll every 2 seconds in case SSE drops
+  setInterval(() => {
+    fetch('/api/quiz')
+      .then(res => res.json())
+      .then(state => applyServerState(state))
+      .catch(() => {});
+  }, 2000);
+}
+
+// Start live sync
+initLiveSync();
 
 // Event Listeners
-btnClickMoney.addEventListener('click', openCardModal);
-modalBackdrop.addEventListener('click', closeCardModal);
-btnCloseCard.addEventListener('click', closeCardModal);
-
-btnAnotherJoke.addEventListener('click', () => {
-  sound.playBanknoteSlide();
-
-  // Reset to front face
-  banknoteFlipper.classList.remove('is-flipped');
-
-  // Randomize note variant and load new joke
-  randomizeNoteVariant();
-  displayNewJoke();
-
-  confetti({
-    particleCount: 25,
-    spread: 50,
-    origin: { y: 0.65 },
-    colors: ['#10b981', '#f59e0b', '#ffffff']
-  });
-
-  // Automatically flip after 1.5 seconds again
-  triggerAutomaticFlip();
+btnClickMoney.addEventListener('click', () => {
+  sound.playClick();
+  window.location.href = '/quiz';
 });
+modalBackdrop.addEventListener('click', closeQuizModal);
+btnCloseQuiz.addEventListener('click', closeQuizModal);
 
 // Reset Camera Button
 btnResetView.addEventListener('click', () => {
@@ -431,7 +569,7 @@ btnSound.addEventListener('click', () => {
 
 // ESC key closes modal
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !cardModal.classList.contains('hidden')) {
-    closeCardModal();
+  if (e.key === 'Escape' && !quizModal.classList.contains('hidden')) {
+    closeQuizModal();
   }
 });

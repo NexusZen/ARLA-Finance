@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arla FLIT • Quiz Controller Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-dark: #05070a;
+      --panel-bg: rgba(15, 23, 42, 0.9);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --color-emerald: #10b981;
+      --color-emerald-dark: #047857;
+      --color-amber: #f59e0b;
+      --color-rose: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+
+    *::-webkit-scrollbar,
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent !important;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+    }
+
+    .brand-area {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-logo {
+      height: 40px;
+      object-fit: contain;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .status-pill {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    .status-waiting {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-active {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-ended {
+      background: rgba(168, 85, 247, 0.15);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .btn-link {
+      color: var(--color-emerald);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.08);
+      transition: all 0.2s ease;
+    }
+
+    .btn-link:hover {
+      background: rgba(16, 185, 129, 0.18);
+      color: #ffffff;
+    }
+
+    /* Main Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 860px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 0.75rem;
+    }
+
+    /* Controls Panel */
+    .controls-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-primary {
+      background: var(--color-emerald);
+      color: #05070a;
+      grid-column: span 2;
+      font-size: 1.05rem;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #34d399;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-next {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-next:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.28);
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+
+    .btn-prev {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border: 1px solid var(--panel-border);
+    }
+
+    .btn-prev:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+
+    .btn-reset {
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      grid-column: span 2;
+    }
+
+    .btn-reset:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.22);
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+
+    /* Live Preview Panel */
+    .preview-box {
+      background: rgba(5, 7, 10, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 220px;
+    }
+
+    .preview-qnum {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--color-emerald);
+      letter-spacing: 0.1em;
+    }
+
+    .preview-qtext {
+      font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #ffffff;
+    }
+
+    .preview-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .preview-opt-item {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 0.4rem 0.6rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* Question Queue List */
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--panel-border);
+      transition: all 0.2s ease;
+    }
+
+    .queue-item.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .queue-qnum {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-emerald);
+      width: 24px;
+    }
+
+    .queue-qtitle {
+      font-size: 0.85rem;
+      color: var(--text-main);
+      font-weight: 500;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-jump {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .btn-jump:hover {
+      background: rgba(16, 185, 129, 0.2);
+      color: #ffffff;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand-area">
+        <img src="/arla_logo.png" alt="Arla Logo" class="brand-logo" />
+        <div>
+          <h1 class="brand-title">FLIT QUIZ CONTROLLER</h1>
+          <div class="brand-subtitle">EXECUTIVE SESSION MANAGER</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="status-pill" class="status-pill status-waiting">
+          <span class="dot"></span>
+          <span id="status-text">WAITING</span>
+        </div>
+        <a href="/" target="_blank" class="btn-link" title="Open Treasury View">Open 3D View ↗</a>
+      </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-grid">
+      <!-- Controls Column -->
+      <div class="card">
+        <div class="card-title">
+          <span>Session Controls</span>
+          <span id="progress-indicator" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-emerald);">0 of 5</span>
+        </div>
+
+        <div class="controls-group">
+          <!-- Start Quiz button -->
+          <button id="btn-start" class="btn btn-primary">
+            ▶ START QUIZ
+          </button>
+
+          <!-- Navigation buttons -->
+          <button id="btn-prev" class="btn btn-prev" disabled>
+            ◀ PREV
+          </button>
+          <button id="btn-next" class="btn btn-next" disabled>
+            NEXT ▶
+          </button>
+
+          <!-- Reset session button -->
+          <button id="btn-reset" class="btn btn-reset">
+            ↺ RESET SESSION
+          </button>
+        </div>
+
+        <!-- Live Question Preview -->
+        <div class="card-title" style="margin-top: 0.5rem;">
+          <span>Live Participant View</span>
+          <span id="preview-badge" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">NOT ACTIVE</span>
+        </div>
+        <div class="preview-box" id="preview-box">
+          <div class="preview-qnum" id="preview-num">STATUS: WAITING</div>
+          <div class="preview-qtext" id="preview-text">The quiz has not been started yet. Click "START QUIZ" to release Question 1 to all participants.</div>
+          <div class="preview-options" id="preview-options"></div>
+        </div>
+      </div>
+
+      <!-- Question List Column -->
+      <div class="card">
+        <div class="card-title">
+          <span>Question Queue</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">5 Questions</span>
+        </div>
+        <div class="queue-list" id="queue-list">
+          <!-- Rendered dynamically by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const statusPill = document.getElementById('status-pill');
+    const statusText = document.getElementById('status-text');
+    const progressIndicator = document.getElementById('progress-indicator');
+    const btnStart = document.getElementById('btn-start');
+    const btnNext = document.getElementById('btn-next');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnReset = document.getElementById('btn-reset');
+    const previewNum = document.getElementById('preview-num');
+    const previewText = document.getElementById('preview-text');
+    const previewOptions = document.getElementById('preview-options');
+    const previewBadge = document.getElementById('preview-badge');
+    const queueList = document.getElementById('queue-list');
+
+    let currentState = null;
+
+    async function sendAction(action, index = null) {
+      try {
+        const res = await fetch('/api/controller', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, index })
+        });
+        const data = await res.json();
+        if (data.state) {
+          updateUI(data.state);
+        }
+      } catch (err) {
+        console.error('Controller action failed:', err);
+      }
+    }
+    window.sendAction = sendAction;
+
+    function updateUI(state) {
+      currentState = state;
+      const { status, currentIndex, totalQuestions, currentQuestion, allQuestions } = state;
+
+      // Status Pill
+      statusPill.className = 'status-pill status-' + status;
+      if (status === 'waiting') {
+        statusText.textContent = 'WAITING';
+        progressIndicator.textContent = '0 of ' + totalQuestions;
+        btnStart.disabled = false;
+        btnStart.textContent = '▶ START QUIZ';
+        btnNext.disabled = true;
+        btnPrev.disabled = true;
+
+        previewBadge.textContent = 'LOCKED';
+        previewNum.textContent = 'STATUS: WAITING';
+        previewText.textContent = 'The quiz has not been started yet. Click "START QUIZ" to release Question 1 to all participants.';
+        previewOptions.innerHTML = '';
+      } else if (status === 'active') {
+        statusText.textContent = `QUESTION ${currentIndex + 1}/${totalQuestions}`;
+        progressIndicator.textContent = `${currentIndex + 1} of ${totalQuestions}`;
+        btnStart.disabled = true;
+        btnStart.textContent = '✓ QUIZ IN PROGRESS';
+        btnNext.disabled = false;
+        btnNext.textContent = currentIndex === totalQuestions - 1 ? 'FINISH QUIZ ★' : 'NEXT ▶';
+        btnPrev.disabled = currentIndex === 0;
+
+        previewBadge.textContent = 'LIVE NOW';
+        if (currentQuestion) {
+          previewNum.textContent = `QUESTION ${String(currentIndex + 1).padStart(2, '0')}`;
+          previewText.textContent = currentQuestion.question;
+          previewOptions.innerHTML = currentQuestion.options.map((opt, i) => {
+            const letter = String.fromCharCode(97 + i);
+            return `<div class="preview-opt-item"><strong>${letter}.</strong> ${opt}</div>`;
+          }).join('');
+        }
+      } else if (status === 'ended') {
+        statusText.textContent = 'COMPLETED';
+        progressIndicator.textContent = 'Completed';
+        btnStart.disabled = true;
+        btnStart.textContent = '✓ QUIZ COMPLETED';
+        btnNext.disabled = true;
+        btnPrev.disabled = false;
+
+        previewBadge.textContent = 'RESULTS';
+        previewNum.textContent = 'ASSESSMENT COMPLETED';
+        previewText.textContent = 'Congratulations screen is currently showing for all participants with confetti.';
+        previewOptions.innerHTML = '<div class="preview-opt-item" style="color:#34d399">✓ All participants eligible for Finance Team</div>';
+      }
+
+      // Render Queue List
+      if (allQuestions && allQuestions.length > 0) {
+        queueList.innerHTML = allQuestions.map((q, idx) => {
+          const isActive = status === 'active' && idx === currentIndex;
+          return `
+            <div class="queue-item ${isActive ? 'active' : ''}">
+              <span class="queue-qnum">${String(idx + 1).padStart(2, '0')}</span>
+              <span class="queue-qtitle" title="${q.question}">${q.question}</span>
+              <button class="btn-jump" onclick="sendAction('goto', ${idx})">
+                ${isActive ? '● LIVE' : 'Jump'}
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Event Listeners
+    btnStart.addEventListener('click', () => sendAction('start'));
+    btnNext.addEventListener('click', () => sendAction('next'));
+    btnPrev.addEventListener('click', () => sendAction('prev'));
+    btnReset.addEventListener('click', async () => {
+      btnReset.disabled = true;
+      const originalText = btnReset.textContent;
+      btnReset.textContent = '↺ Resetting...';
+      try {
+        await sendAction('reset');
+        btnReset.textContent = '✓ RESET!';
+      } catch (err) {
+        console.error('Reset error:', err);
+        btnReset.textContent = '✗ Error';
+      }
+      setTimeout(() => {
+        btnReset.disabled = false;
+        btnReset.textContent = originalText;
+      }, 1000);
+    });
+
+    // Connect to real-time Server-Sent Events (SSE)
+    function connectSSE() {
+      const evtSource = new EventSource('/api/quiz/stream');
+      evtSource.onmessage = (event) => {
+        try {
+          const state = JSON.parse(event.data);
+          updateUI(state);
+        } catch (err) {
+          console.error('Failed to parse SSE event:', err);
+        }
+      };
+      evtSource.onerror = () => {
+        // Fallback polling if SSE disconnects
+        setTimeout(fetchState, 1000);
+      };
+    }
+
+    async function fetchState() {
+      try {
+        const res = await fetch('/api/quiz');
+        const state = await res.json();
+        updateUI(state);
+      } catch (err) {
+        console.error('Poll failed:', err);
+      }
+    }
+
+    // Initialize
+    fetchState();
+    connectSSE();
+  </script>
+</body>
+</html>

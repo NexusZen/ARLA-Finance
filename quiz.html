@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arla BD FLIT • Assessment Quiz</title>
+  <meta name="description" content="Participate in the live Arla BD FLIT Assessment Quiz. Real-time question synchronization, interactive finance challenges, and eligibility assessment." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Roboto:wght@700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body class="quiz-page-body">
+  <!-- Ambient background glow layers -->
+  <div class="ambient-glow glow-emerald"></div>
+  <div class="ambient-glow glow-gold"></div>
+
+  <!-- Participant Name Registration Modal (Always asked at start) -->
+  <div id="name-modal" class="name-modal-overlay">
+    <div class="name-modal-card">
+      <div class="name-modal-glow"></div>
+      <h2 class="name-modal-title">Welcome to ARLA FLIT</h2>
+      
+      <form id="form-name-entry" class="name-form" onsubmit="return false;">
+        <div class="name-input-wrapper">
+          <input
+            type="text"
+            id="input-user-name"
+            class="name-input"
+            maxlength="24"
+            required
+            autocomplete="name"
+            autofocus
+          />
+        </div>
+        <button type="submit" id="btn-save-name" class="btn-name-submit">
+          <span>Continue to Assessment</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Header Navbar -->
+  <header class="quiz-page-nav">
+    <a href="/" class="btn-return-vault" id="btn-return-vault" aria-label="Return to Treasury Vault">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      <span>Return to Vault</span>
+    </a>
+
+    <div class="top-center-brand">
+      <img src="/arla_logo.png" alt="ARLA Logo" class="brand-logo-large" />
+      <h1 class="brand-title">Arla BD FLIT</h1>
+    </div>
+
+    <div class="quiz-nav-right">
+      <button id="btn-sound" class="icon-btn" title="Toggle Sound" aria-label="Toggle Sound">
+        <svg id="icon-sound-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <svg id="icon-sound-off" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Quiz Container -->
+  <main class="quiz-page-container">
+    <div class="quiz-presentation-wrapper" id="quiz-presentation">
+      
+      <!-- Glowing aura behind the quiz card -->
+      <div class="quiz-glow-wrapper">
+        <div class="quiz-glow-aura"></div>
+
+        <!-- Banknote Intro: 3D cash card emergence & flip -->
+        <div class="banknote-intro" id="banknote-intro">
+          <img src="/arla_100_note.png" alt="ARLA 100 Euro Note" class="banknote-intro-img" />
+          <div class="banknote-intro-shimmer"></div>
+        </div>
+
+        <!-- Quiz Card Panel -->
+        <div class="quiz-card quiz-card-hidden" id="quiz-card">
+          
+          <!-- Progress bar -->
+          <div class="quiz-progress-bar-wrapper" id="quiz-progress-wrapper">
+            <div class="quiz-progress-bar" id="quiz-progress-bar"></div>
+          </div>
+          <div class="quiz-progress-label" id="quiz-progress-label">Question 1 of 5</div>
+
+          <!-- Waiting area (shown when host has not started the quiz yet) -->
+          <div class="quiz-waiting-area hidden" id="quiz-waiting-area">
+            <div class="waiting-loader-rings">
+              <div class="spinner-ring"></div>
+              <div class="spinner-core"></div>
+            </div>
+            <h2 class="waiting-title">Please wait, <span id="waiting-name-display">Participant</span></h2>
+            <p class="waiting-subtitle">The quiz will shortly start</p>
+            <div class="waiting-dots-pulse">
+              <span class="pulse-dot"></span>
+              <span class="pulse-dot"></span>
+              <span class="pulse-dot"></span>
+            </div>
+            <button id="btn-edit-name" class="btn-edit-name" type="button">✎ Change Name</button>
+          </div>
+
+          <!-- Question area -->
+          <div class="quiz-question-area" id="quiz-question-area">
+            <div class="quiz-qnum-tag">
+              <span class="tag-accent">QUESTION</span>
+              <span id="quiz-qnum" class="tag-number">01</span>
+            </div>
+            <h2 class="quiz-qtext" id="quiz-qtext">Loading question...</h2>
+            <div class="quiz-options-grid" id="quiz-options">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- 3D Card Presentation Area (replaces old you won texts) -->
+          <div class="quiz-congrats-area hidden" id="quiz-congrats-area">
+            <div class="card-presentation-header">
+              <div class="congrats-badge-pill">
+                <span class="pill-sparkle">★</span>
+                <span>ARLA FINANCE HONORARY MEMBER</span>
+                <span class="pill-sparkle">★</span>
+              </div>
+              <h2 class="card-holder-title" id="card-holder-title">James</h2>
+            </div>
+
+            <!-- 3D Spinning Card Container -->
+            <div class="card-3d-stage-wrapper">
+              <div id="card-3d-container" class="card-3d-container"></div>
+              <div class="card-stage-glow"></div>
+            </div>
+
+            <div class="card-action-bar">
+              <button id="btn-download-card-pdf" class="btn-download-pdf" type="button" aria-label="Download 2-Page PDF Membership Card">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span id="btn-download-text">Download PDF Card</span>
+              </button>
+              <a href="/" class="btn-back" id="btn-congrats-done">Back</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="/src/quiz-page.js"></script>
+</body>
+</html>
