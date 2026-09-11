@@ -1,4 +1,5 @@
-import { Redis } from '@upstash/redis';
+import { Redis as UpstashRedis } from '@upstash/redis';
+import IORedis from 'ioredis';
 import { quizQuestions } from '../src/quiz.js';
 
 const REDIS_KEY = 'arla:quiz_state';
@@ -11,23 +12,71 @@ let memoryState = {
   updatedAt: Date.now()
 };
 
-let redisClient = null;
+let unifiedClient = null;
+let clientType = 'memory';
 
-function getRedis() {
-  if (redisClient) return redisClient;
+function getUnifiedRedis() {
+  if (unifiedClient) return { client: unifiedClient, type: clientType };
 
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-
-  if (url && token) {
+  // 1. Standard Redis TCP URL (Provided by Official Redis Cloud on Vercel)
+  const tcpUrl = process.env.REDIS_URL || process.env.REDIS_TLS_URL || (process.env.KV_URL && process.env.KV_URL.startsWith('redis') ? process.env.KV_URL : null);
+  if (tcpUrl) {
     try {
-      redisClient = new Redis({ url, token });
-      return redisClient;
+      const io = new IORedis(tcpUrl, {
+        maxRetriesPerRequest: 2,
+        connectTimeout: 5000,
+        lazyConnect: false,
+        enableReadyCheck: false
+      });
+      io.on('error', (err) => console.warn('[IORedis] Warning:', err?.message || err));
+      unifiedClient = io;
+      clientType = 'redis-cloud';
+      console.log('[State] Connected to Redis via TCP URL');
+      return { client: unifiedClient, type: clientType };
     } catch (err) {
-      console.warn('[Redis] Failed to initialize Redis client, using in-memory fallback:', err);
+      console.warn('[IORedis] Failed to initialize from TCP URL:', err);
     }
   }
-  return null;
+
+  // 2. Discrete Redis Cloud parameters (host, port, password)
+  if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
+    try {
+      const io = new IORedis({
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        password: process.env.REDIS_PASSWORD,
+        username: process.env.REDIS_USER || 'default',
+        maxRetriesPerRequest: 2,
+        connectTimeout: 5000,
+        enableReadyCheck: false
+      });
+      io.on('error', (err) => console.warn('[IORedis] Warning:', err?.message || err));
+      unifiedClient = io;
+      clientType = 'redis-cloud';
+      console.log('[State] Connected to Redis via Host/Port/Password');
+      return { client: unifiedClient, type: clientType };
+    } catch (err) {
+      console.warn('[IORedis] Failed to initialize from discrete params:', err);
+    }
+  }
+
+  // 3. Upstash REST API (Upstash Redis or Vercel KV REST)
+  const restUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+  if (restUrl && restToken && restUrl.startsWith('http')) {
+    try {
+      unifiedClient = new UpstashRedis({ url: restUrl, token: restToken });
+      clientType = 'upstash-rest';
+      console.log('[State] Connected to Upstash Redis via REST');
+      return { client: unifiedClient, type: clientType };
+    } catch (err) {
+      console.warn('[Upstash] Failed to initialize Upstash REST client:', err);
+    }
+  }
+
+  clientType = 'memory';
+  return { client: null, type: clientType };
 }
 
 /**
@@ -46,7 +95,8 @@ export function formatPublicState(rawState) {
     totalQuestions,
     currentQuestion: status === 'active' ? quizQuestions[currentIndex] : null,
     allQuestions: quizQuestions,
-    updatedAt: rawState?.updatedAt || Date.now()
+    updatedAt: rawState?.updatedAt || Date.now(),
+    storage: clientType
   };
 }
 
@@ -54,16 +104,16 @@ export function formatPublicState(rawState) {
  * Retrieves the current quiz state from Redis or in-memory fallback
  */
 export async function getQuizState() {
-  const redis = getRedis();
-  if (redis) {
+  const { client } = getUnifiedRedis();
+  if (client) {
     try {
-      const data = await redis.get(REDIS_KEY);
+      const data = await client.get(REDIS_KEY);
       if (data) {
         const parsed = typeof data === 'string' ? JSON.parse(data) : data;
         return formatPublicState(parsed);
       }
     } catch (err) {
-      console.warn('[Redis] Error fetching state from Redis, using memory fallback:', err);
+      console.warn('[Redis] Error fetching state from Redis:', err?.message || err);
     }
   }
   return formatPublicState(memoryState);
@@ -134,12 +184,13 @@ export async function executeQuizAction(action, index) {
     updatedAt: Date.now()
   };
 
-  const redis = getRedis();
-  if (redis) {
+  const { client } = getUnifiedRedis();
+  if (client) {
     try {
-      await redis.set(REDIS_KEY, JSON.stringify(updatedRaw));
+      const serialized = JSON.stringify(updatedRaw);
+      await client.set(REDIS_KEY, serialized);
     } catch (err) {
-      console.warn('[Redis] Failed to write state to Redis:', err);
+      console.warn('[Redis] Failed to write state to Redis:', err?.message || err);
     }
   }
 
