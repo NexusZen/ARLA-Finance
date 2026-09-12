@@ -612,7 +612,7 @@
     // Initialize
     fetchState();
     connectSSE();
-    setInterval(fetchState, 1000);
+    setInterval(fetchState, 1500);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) fetchState();
     });

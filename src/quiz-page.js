@@ -618,8 +618,8 @@ function initSync() {
   // Try SSE for local dev
   trySSE();
 
-  // Robust 1-second interval polling for Vercel and cross-device sync
-  setInterval(fetchState, 1000);
+  // Robust 1.5-second interval polling for Vercel and cross-device sync
+  setInterval(fetchState, 1500);
 
   // Immediate sync when tab becomes active
   document.addEventListener('visibilitychange', () => {
