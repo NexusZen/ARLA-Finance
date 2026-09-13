@@ -75,7 +75,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 1.8; // 2x speed for the 3D money at the start
+controls.autoRotateSpeed = 60 / 11; // Full 360° rotation in exactly 11 seconds (~5.45)
 controls.maxPolarAngle = Math.PI / 2 + 0.12;
 controls.minPolarAngle = 0.15;
 controls.minDistance = 1.8;
@@ -239,7 +239,8 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
 
-  const elapsedTime = clock.getElapsedTime();
+  const delta = clock.getDelta();
+  const elapsedTime = clock.elapsedTime;
 
   // Oscillate back glow point lights for living atmosphere
   backGlowLight.intensity = 3.6 + Math.sin(elapsedTime * 2.2) * 0.9;
@@ -261,7 +262,7 @@ function animate() {
     euroModel.position.y = 0.25 + Math.sin(elapsedTime * 1.5) * 0.04;
   }
 
-  controls.update();
+  controls.update(delta);
   renderer.render(scene, camera);
 }
 
